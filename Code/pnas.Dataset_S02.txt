@@ -1,0 +1,156 @@
+/*Stata do file*/
+
+use "CS final - pnas.dta", clear
+
+svyset univcode [pweight = sw_f]
+
+/*Figure 1: Cross-country comparison of CS skill levels among Year 4 students*/
+svy: mean z_cs if country == "China"
+svy: mean z_cs if country == "India"
+svy: mean z_cs if country == "Russia"
+svy: mean z_cs if country == "USA"
+
+svy: mean z_cs if country == "China" & FLAG != 1		//FLAG == 1	means answered less than 75% of the items
+svy: mean z_cs if country == "India" & FLAG != 1
+svy: mean z_cs if country == "Russia" & FLAG != 1
+svy: mean z_cs if country == "USA" & FLAG != 1
+
+generate country_n = 0 if country == "USA"
+replace country_n = 1 if country == "China"
+replace country_n = 2 if country == "India"
+replace country_n = 3 if country == "Russia"
+
+svy: regress z_cs i.country_n
+lincom 1.country_n - 2.country_n	//China - India
+lincom 1.country_n - 3.country_n	//China - Russia
+lincom 2.country_n - 3.country_n	//India - Russia
+
+svy: regress z_cs i.country_n if FLAG != 1
+lincom 1.country_n - 2.country_n	//China - India
+lincom 1.country_n - 3.country_n	//China - Russia
+lincom 2.country_n - 3.country_n	//India - Russia
+	
+	//robustness check (about seemingly "mushy" majors called Information Security" and "Information Engineering" in China
+					
+	svy: mean z_cs if country == "China" & mushyC == 0
+	svy: mean z_cs if country == "China"
+
+	//robustness check (about seemingly "mushy" majors called Information Security" in Russia
+	
+	svy: mean z_cs if country == "Russia" & mushyR == 0
+	svy: mean z_cs if country == "Russia"
+		
+/*Figure 2: Elite versus non-elite institutions*/
+	
+	svy: mean z_cs if country == "China" & elite == 1
+	svy: mean z_cs if country == "India" & elite == 1
+	svy: mean z_cs if country == "Russia" & elite == 1
+	svy: mean z_cs if country == "China" & elite == 0
+	svy: mean z_cs if country == "India" & elite == 0
+	svy: mean z_cs if country == "Russia" & elite == 0
+	svy: mean z_cs if country == "USA"
+	svy: mean z_cs if country == "USA" & elite == 1
+	svy: mean z_cs if country == "USA" & elite == 0
+
+	generate country_elite_n = 0 if country == "USA" & elite == 0
+	replace country_elite_n = 1 if country == "USA" & elite == 1
+	replace country_elite_n = 2 if country == "China" & elite == 1
+	replace country_elite_n = 3 if country == "China" & elite == 0
+	replace country_elite_n = 4 if country == "India" & elite == 1
+	replace country_elite_n = 5 if country == "India" & elite == 0
+	replace country_elite_n = 6 if country == "Russia" & elite == 1
+	replace country_elite_n = 7 if country == "Russia" & elite == 0
+
+	svy: regress z_cs i.country_elite_n
+	svy: regress z_cs i.country_elite_n if FLAG != 1
+	
+	svy: regress z_cs i.country_elite_n if country == "China"
+	svy: regress z_cs i.country_elite_n if country == "China" & FLAG != 1
+
+	svy: regress z_cs i.country_elite_n if country == "India"
+	svy: regress z_cs i.country_elite_n if country == "India" & FLAG != 1
+
+	svy: regress z_cs i.country_elite_n if country == "Russia"
+	svy: regress z_cs i.country_elite_n if country == "Russia" & FLAG != 1
+
+	svy: regress z_cs i.country_elite_n if country == "USA"
+	svy: regress z_cs i.country_elite_n if country == "USA" & FLAG != 1
+
+	svy: regress z_cs i.country_n if elite == 1					
+	svy: regress z_cs i.country_n if elite == 1 & FLAG != 1
+
+	generate elite_three = 0 if country == "USA" & elite == 1
+	replace elite_three = 1 if country != "USA" & elite == 1
+
+	svy: regress z_cs elite_three					//pooled estimate
+	svy: regress z_cs elite_three if FLAG != 1
+
+	svy: regress z_cs i.country_n if elite == 0
+	svy: regress z_cs i.country_n if elite == 0 & FLAG != 1
+
+	svy: regress z_cs i.elite_three
+	svy: regress z_cs i.elite_three if FLAG != 1
+
+/*Figure 3: international (defined in two ways) versus domestic*/
+
+	//domestic (including English only + both)
+	generate US_dom_broad = 0
+	replace US_dom_broad = 1 if country == "USA" & englang == "01" | englang == "03"	
+
+	generate country_n2 = . 
+	replace country_n2 = 0 if US_dom_broad
+	replace country_n2 = 1 if country == "China"
+	replace country_n2 = 2 if country == "India"
+	replace country_n2 = 3 if country == "Russia"
+
+	svy: regress z_cs i.country_n2
+	svy: regress z_cs i.country_n2 if FLAG != 1
+	
+	//strictest definition of domestic (English only)	
+	generate US_dom_strict = 0
+	replace US_dom_strict = 1 if country == "USA" & englang == "01"
+
+	generate country_n3 = . 
+	replace country_n3 = 0 if US_dom_strict
+	replace country_n3 = 1 if country == "China"
+	replace country_n3 = 2 if country == "India"
+	replace country_n3 = 3 if country == "Russia"
+
+	svy: regress z_cs i.country_n3
+	svy: regress z_cs i.country_n3 if FLAG != 1
+
+	svy: mean z_cs if country == "USA" 			
+	svy: mean z_cs if US_dom_broad 				
+	svy: mean z_cs if US_dom_strict 			
+
+	svy: mean z_cs if country == "USA" & FLAG != 1		
+	svy: mean z_cs if US_dom_broad & FLAG != 1			
+	svy: mean z_cs if US_dom_strict & FLAG != 1			
+	
+	//compare domestic and international students in the U.S.
+	svy: regress z_cs US_dom_broad if country == "USA"
+	svy: regress z_cs US_dom_strict if country == "USA"
+
+	svy: regress z_cs US_dom_broad if FLAG != 1 & country == "USA"
+	svy: regress z_cs US_dom_strict if FLAG != 1 & country == "USA"
+	
+/*Figure 4: by gender*/
+	svy: regress z_cs i.country_n##i.female
+	svy: regress z_cs i.country_n##i.female if FLAG != 1
+
+	svy: regress z_cs i.female if country == "China"
+	svy: regress z_cs i.female if country == "India"
+	svy: regress z_cs i.female if country == "Russia"
+	svy: regress z_cs i.female if country == "USA"
+
+	/*compare females in the US with males in other countries*/
+	svy: regress z_cs i.female if (country == "USA" & female == 1) | (country != "USA" & female != 1)
+
+	/*compare females in the US with elite males in other countries*/
+	svy: regress z_cs i.female if (country == "USA" & female == 1) | (country != "USA" & elite == 1 & female == 0)
+	svy: regress z_cs i.country_n if (country == "USA" & female == 1) | (country != "USA" & elite == 1 & female == 0)
+	
+	/*compare females in the US with elites, male or female, in other countries*/
+	svy: regress z_cs i.country_n if (country == "USA" & female == 1) | (country != "USA" & elite == 1)
+	
+	
